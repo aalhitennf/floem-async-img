@@ -9,7 +9,9 @@ Enable cache with feature flag `cache`. Cache stores the fetched image(s) in mem
 #### Examples
 
 Async image with specific runtime:
+
 `cargo run --example async --features tokio|async-std|smol|thread`
 
 Async image with cache and specific runtime:
+
 `cargo run --example async --features cache,{tokio|async-std|smol|thread}`
