@@ -1,0 +1,41 @@
+[package]
+name = "floem-async-img"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+floem = { git = "https://github.com/lapce/floem", default-features = false }
+bytes = "1.5.0"
+crossbeam-channel = "0.5.12"
+reqwest = { version = "0.12.0", features = [
+    "default-tls",
+], default-features = false }
+url = "2.5.0"
+
+
+async-compat = { version = "0.2.3", optional = true }
+async-std = { version = "1.12.0", optional = true }
+dashmap = { version = "5.5.3", optional = true }
+futures = { version = "0.3.30", optional = true, default-features = false }
+smol = { version = "2.0.0", optional = true }
+tokio = { version = "1.36.0", default-features = false, optional = true }
+xxhash-rust = { version = "0.8.10", optional = true, features = [
+    "xxh64",
+    "xxh3",
+] }
+
+[dev-dependencies]
+async-std = { version = "1.12.0", features = ["attributes"] }
+tokio = { version = "1.36.0", default-features = false, features = [
+    "rt-multi-thread",
+    "macros",
+] }
+smol = { version = "2.0.0" }
+
+[features]
+default = ["floem/default-image-formats"]
+cache = ["dep:xxhash-rust", "dep:dashmap", "dep:futures"]
+tokio = ["dep:tokio", "floem/rfd-tokio"]
+async-std = ["dep:async-std", "dep:async-compat", "floem/rfd-async-std"]
+smol = ["dep:smol", "dep:async-compat", "floem/rfd-async-std"]
+thread = ["default", "reqwest/blocking"]
