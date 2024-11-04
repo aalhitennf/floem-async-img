@@ -33,7 +33,7 @@ tokio = { version = "1.36.0", default-features = false, features = [
 smol = { version = "2.0.0" }
 
 [features]
-default = ["floem/default-image-formats"]
+default = ["floem/default-image-formats", "floem/vger"]
 cache = ["dep:xxhash-rust", "dep:dashmap", "dep:futures"]
 tokio = ["dep:tokio", "floem/rfd-tokio"]
 async-std = ["dep:async-std", "dep:async-compat", "floem/rfd-async-std"]

@@ -9,12 +9,10 @@ use floem::{
     ext_event::create_signal_from_channel,
     reactive::{create_effect, use_context, with_scope, RwSignal, Scope},
     reactive::{SignalGet, SignalUpdate},
-    views::{img, Decorators, DynamicView, Img},
+    style::Style,
+    views::{img, Decorators, DynamicContainer, DynamicView, Img},
     IntoView, View,
 };
-
-#[cfg(feature = "cache")]
-use self::cache::AsyncCache;
 
 pub struct AsyncImage {
     cx: Scope,
@@ -46,31 +44,19 @@ impl AsyncImage {
         self.buffer = bytes.into();
         self
     }
-
-    // pub fn build(self) -> impl IntoView {
-    //     let cx = self.cx;
-    //     let url = self.url;
-
-    //     let buffer = cx.create_rw_signal(self.buffer);
-
-    //     let tx = cx.create_rw_signal(self.fetch_channel.0);
-    //     let rx = self.fetch_channel.1;
-
-    //     with_scope(cx, || async_image_view(url, buffer, tx, rx))
-    // }
 }
 
 #[cfg(not(feature = "cache"))]
 impl IntoView for AsyncImage {
-    type V = Img;
+    type V = DynamicContainer<Bytes>;
 
     fn into_view(self) -> Self::V {
         let cx = self.cx;
         let url = self.url;
 
-        let buffer = cx.create_rw_signal(self.buffer);
+        let buffer = RwSignal::new(self.buffer);
 
-        let tx = cx.create_rw_signal(self.fetch_channel.0);
+        let tx = RwSignal::new(self.fetch_channel.0);
         let rx = self.fetch_channel.1;
 
         with_scope(cx, || async_image_view(url, buffer, tx, rx))
@@ -79,7 +65,7 @@ impl IntoView for AsyncImage {
 
 #[cfg(feature = "cache")]
 impl IntoView for AsyncImage {
-    type V = Img;
+    type V = DynamicContainer<Bytes>;
 
     fn into_view(self) -> Self::V {
         let cx = self.cx;
@@ -100,8 +86,8 @@ fn async_image_view(
     buffer: RwSignal<Bytes>,
     tx: RwSignal<Sender<Bytes>>,
     rx: Receiver<Bytes>,
-) -> Img {
-    use floem::views::{dyn_view, DynamicView};
+) -> DynamicContainer<Bytes> {
+    use floem::views::{dyn_container, dyn_view, DynamicContainer, DynamicView};
 
     let image_signal = create_signal_from_channel(rx);
 
@@ -112,10 +98,14 @@ fn async_image_view(
     });
 
     create_effect(move |_| {
-        fetch(url.clone(), tx.get_untracked());
+        fetch(&url, &tx.get_untracked());
     });
 
-    img(move || buffer.get().to_vec())
+    dyn_container(
+        move || buffer.get(),
+        |buf| img(move || buf.to_vec()).style(Style::size_full),
+    )
+    .style(Style::size_full)
 }
 
 pub fn async_image(url: impl Into<String>) -> AsyncImage {
@@ -128,39 +118,42 @@ fn async_image_view_cache(
     buffer: RwSignal<Bytes>,
     tx: RwSignal<Sender<Bytes>>,
     rx: Receiver<Bytes>,
-) -> Img {
+) -> DynamicContainer<Bytes> {
+    use crate::cache::AsyncCache;
+    use floem::style::Style;
+    use floem::views::dyn_container;
+
     let cache = use_context::<AsyncCache>().unwrap();
-
     let image_signal = create_signal_from_channel(rx);
-
     let image_url = RwSignal::new(url);
-
     create_effect(move |_| {
         if let Some(v) = image_signal.get() {
             buffer.set(v);
         }
     });
-
     create_effect(move |_| {
         cache.url(&tx.get_untracked(), &image_url.get_untracked());
     });
-
-    img(move || buffer.get().to_vec())
+    dyn_container(
+        move || buffer.get(),
+        |buf| img(move || buf.to_vec()).style(Style::size_full),
+    )
+    .style(Style::size_full)
 }
 
 #[inline]
-fn fetch(url: String, sender: Sender<Bytes>) {
+fn fetch(url: &str, sender: &Sender<Bytes>) {
     #[cfg(feature = "tokio")]
-    fetch_tokio(url.clone(), sender.clone());
+    fetch_tokio(url.to_string(), sender.clone());
 
     #[cfg(feature = "async-std")]
-    fetch_async_std(url.clone(), sender.clone());
+    fetch_async_std(url.to_string(), sender.clone());
 
     #[cfg(feature = "smol")]
-    fetch_async_smol(url.clone(), sender.clone());
+    fetch_async_smol(url.to_string(), sender.clone());
 
     #[cfg(feature = "thread")]
-    fetch_thread(url.clone(), sender.clone());
+    fetch_thread(url.to_string(), sender.clone());
 }
 
 #[cfg(feature = "tokio")]

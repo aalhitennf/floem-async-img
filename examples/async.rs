@@ -1,5 +1,5 @@
 use floem::{
-    keyboard::{Key, Modifiers, NamedKey},
+    keyboard::{Key, NamedKey},
     reactive::{RwSignal, SignalGet, SignalUpdate},
     style::Style,
     views::{button, container, dyn_container, h_stack, text_input, v_stack, Decorators},
@@ -88,11 +88,13 @@ fn create_view() -> impl View {
 
     let view = container(v_stack((top_elements, image)).style(Style::size_full))
         .style(Style::size_full)
-        .keyboard_navigatable();
+        .keyboard_navigable();
 
     let id = view.id();
 
-    view.on_key_up(Key::Named(NamedKey::F11), Modifiers::empty(), move |_| {
-        id.inspect()
-    })
+    view.on_key_up(
+        Key::Named(NamedKey::F11),
+        |m| m.is_empty(),
+        move |_| id.inspect(),
+    )
 }
